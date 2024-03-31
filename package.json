@@ -1,0 +1,32 @@
+{
+  "name": "testhardhat",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "hardhat:node": "hardhat node",
+    "hardhat:compile": "hardhat compile",
+    "hardhat:compile:force": "hardhat compile --force",
+    "hardhat:test": "REPORT_GAS=true hardhat test",
+    "hardhat:test:gas": "REPORT_GAS=true COINMARKETCAP_API_KEY=$(security find-generic-password -w -s 'Coinmarketcap API Key') hardhat test",
+    "hardhat:deploy:DomainController": "hardhat run scripts/deployDomainController.ts.ts --network localhost",
+    "hardhat:deploy:sepolia": "MNEMONIC=$(security find-generic-password -w -s 'Seed Phrase (for Testnets)') INFURA_API_KEY=$(security find-generic-password -w -s 'Infura API key') hardhat run scripts/deployDomainController.ts.ts --network sepolia"
+  },
+  "keywords": [],
+  "author": "Oleh Flud",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/chai": "^4.3.14",
+    "@types/jest": "^29.5.12",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.12.2",
+    "chai": "^4.4.1",
+    "mocha": "^10.4.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.3"
+  },
+  "dependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.2"
+  }
+}
