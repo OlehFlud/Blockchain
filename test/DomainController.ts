@@ -1,11 +1,13 @@
-import { ethers } from "hardhat";
-import { Contract, ContractFactory } from "ethers";
-import { expect } from "chai";
+import {ethers} from "hardhat";
+import {Contract, ContractFactory} from "ethers";
+import {expect} from "chai";
+import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 
 describe("DomainController", function () {
+  const value = ethers.parseEther("1");
   let DomainController: ContractFactory;
   let domainController: Contract;
-  let owner: string;
+  let owner: SignerWithAddress;
   let addr1: string;
   let addr2: string;
 
@@ -17,88 +19,81 @@ describe("DomainController", function () {
     await domainController.waitForDeployment();
   });
 
-  it("should register a domain", async function () {
-    await domainController.connect(addr1).registerDomain("com", { value: ethers.parseEther("1") });
-    const domain = await domainController.domains("com");
-
-    expect(domain.controller).to.equal(addr1.address);
-  });
-
-  it("should not allow registering a subdomain", async function () {
-    await expect(domainController.connect(addr1).registerDomain("business.com", { value: ethers.parseEther("1") })).to.be.revertedWith("Domain" +
-      " must" +
-      " be a top-level domain");
-  });
-
-  it("should not allow registering an already registered domain", async function () {
-    await domainController.connect(addr1).registerDomain("com", { value: ethers.parseEther("1") });
-    await expect(domainController.connect(addr1).registerDomain("com", { value: ethers.parseEther("1") })).to.be.revertedWith("Domain already" +
-      " registered");
-  });
-
-  it("should allow the owner to set the domain registration fee", async function () {
-    await domainController.setDomainRegistrationFee(2);
-    const fee = await domainController.domainRegistrationFee();
-
-    expect(fee).to.equal(2);
-  });
-
-  it("should allow the owner to withdraw funds", async function () {
-    await domainController.connect(addr1).registerDomain("com", { value: ethers.parseEther("1") });
-
-    const initialBalance = await ethers.provider.getBalance(owner.address);
-    await domainController.withdrawFunds();
-    const finalBalance = await ethers.provider.getBalance(owner.address);
-
-    expect(finalBalance).gt(initialBalance)
-  });
-
-  it('should register a domain and collect metrics', async () => {
-    const domain = 'example';
-    await domainController.connect(addr1).registerDomain(domain, { value: ethers.parseEther('1') });
-
-    const registeredDomainsCountFilter = domainController.filters.DomainRegistered(null, null, null);
-    const registeredDomainsCountLogs = await domainController.queryFilter(registeredDomainsCountFilter);
-    const registeredDomainsCount = registeredDomainsCountLogs.length;
-    expect(registeredDomainsCount).to.equal(1);
-
-    const registeredDomainsFilter = domainController.filters.DomainRegistered(null, null, null);
-    const registeredDomainsLogs = await domainController.queryFilter(registeredDomainsFilter);
-    const registeredDomains = registeredDomainsLogs.map(log => log.args.domain);
-    expect(registeredDomains).to.eql([domain]);
-  });
-
-  it('should retrieve the list of registered domains for a specific controller sorted by registration date from event', async () => {
-    const domain = 'example';
-    const domain2 = 'example1';
-
-    // Register the domains
-    await domainController.registerDomain(domain, { value: ethers.parseEther('1') });
-    await domainController.registerDomain(domain2, { value: ethers.parseEther('1') });
-
-    const controllerAddress = await owner.getAddress();
-    const controllerDomainsLogs = await domainController.queryFilter(domainController.filters.DomainRegistered(null, controllerAddress, null));
-
-    // Extract the registration dates from the event logs
-    const registrationDates = controllerDomainsLogs.map(log => log.args.registrationDate);
-
-    // Sort the registration dates
-    // By default, sorting is by date, but we can write custom sorting
-    controllerDomainsLogs.sort();
-
-    // Get the domains in the order of registration
-    const controllerDomains = registrationDates.map(date => {
-      const log = controllerDomainsLogs.find(log => log.args.registrationDate === date);
-      return log.args.domain;
+  describe("DomainRegistration", function () {
+    it("should register a domain", async function () {
+      await domainController.connect(addr1).registerDomain("com", {value});
+      const domain = await domainController.getDomainController("com");
+      expect(domain).to.equal(addr1.address);
     });
 
-    expect(controllerDomains).to.eql([domain, domain2]);
+    it("should not allow registering an already registered domain", async function () {
+      await domainController.connect(addr1).registerDomain("com", {value});
+      await expect(domainController.connect(addr1).registerDomain("com", {value})).to.be.rejectedWith(
+        "DomainIsAlreadyRegistered"
+      );
+    });
+
+    it("should allow the owner to set the domain registration fee", async function () {
+      await domainController.setDomainRegistrationFee(2);
+      const fee = await domainController.domainRegistrationFee();
+
+      expect(fee).to.equal(2);
+    });
+  })
+
+  describe("WithdrawalFunds", function () {
+    it("should allow the owner to withdraw funds", async function () {
+      await domainController.connect(addr1).registerDomain("com", {value});
+      const initialBalance = await ethers.provider.getBalance(owner.address);
+      await domainController.withdrawFunds(addr1);
+      const finalBalance = await ethers.provider.getBalance(owner.address);
+
+      expect(finalBalance).lt(initialBalance)
+    });
   });
 
-  it("should return the list of registered domains sorted by registration date", async function () {
-    await domainController.connect(addr1).registerDomain("com", { value: ethers.parseEther("1") });
-    await domainController.connect(addr1).registerDomain("org", { value: ethers.parseEther("1") });
-    const domainNames = await domainController.getRegisteredDomains();
-    expect(domainNames).to.deep.equal(["com", "org"]);
-  });
+  describe("Event", function () {
+    it("should emit DomainRegistered event when a domain is registered", async function () {
+      const domain = "com";
+      const controller = owner.address;
+      await expect(domainController.connect(owner).registerDomain(domain, {value}))
+        .to.emit(domainController, "DomainRegistered")
+        .withArgs(domain, controller);
+    });
+  })
+
+  describe("Metrics", function () {
+    it("should get a count and list of all registered domain", async () => {
+      await domainController.connect(addr1).registerDomain("com", {value});
+      await domainController.connect(addr1).registerDomain("ua", {value});
+      await domainController.connect(addr2).registerDomain("net", {value});
+
+      const filter = domainController.filters.DomainRegistered(null, null);
+      const logs = await domainController.queryFilter(filter);
+
+      console.log("Count of registered domains: ", logs.length)
+
+      logs.map((log) => {
+        console.log("Domain: ", log.args);
+      });
+
+      expect(logs.length).to.equal(3);
+    });
+
+    it("should get a list of all registered domain by for a specific controller", async () => {
+      await domainController.connect(addr1).registerDomain("com", {value});
+      await domainController.connect(addr1).registerDomain("ua", {value});
+      await domainController.connect(addr2).registerDomain("net", {value});
+      await domainController.connect(addr2).registerDomain("cc", {value});
+      await domainController.connect(addr2).registerDomain("org", {value});
+
+      const filter = domainController.filters.DomainRegistered(null, addr2);
+      const logs = await domainController.queryFilter(filter);
+
+      logs.map((log) => {
+        console.log("Domain: ", log.args);
+      });
+      expect(logs.length).to.equal(3);
+    });
+  })
 });

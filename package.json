@@ -9,7 +9,7 @@
     "hardhat:compile:force": "hardhat compile --force",
     "hardhat:test": "REPORT_GAS=true hardhat test",
     "hardhat:test:gas": "REPORT_GAS=true COINMARKETCAP_API_KEY=$(security find-generic-password -w -s 'Coinmarketcap API Key') hardhat test",
-    "hardhat:deploy:DomainController": "hardhat run scripts/deployDomainController.ts.ts --network localhost",
+    "hardhat:deploy:DomainController": "hardhat run scripts/deployDomainController.ts --network localhost",
     "hardhat:deploy:sepolia": "MNEMONIC=$(security find-generic-password -w -s 'Seed Phrase (for Testnets)') INFURA_API_KEY=$(security find-generic-password -w -s 'Infura API key') hardhat run scripts/deployDomainController.ts.ts --network sepolia"
   },
   "keywords": [],
