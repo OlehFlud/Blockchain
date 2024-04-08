@@ -43,9 +43,8 @@ contract DomainController {
      * @dev Modifier to check if the caller is the contract owner.
      */
     modifier onlyOwner() {
-        if (msg.sender != owner) {
+        if (msg.sender != owner)
             revert OnlyOwnerAllowed();
-        }
         _;
     }
 
@@ -53,9 +52,8 @@ contract DomainController {
      * @dev Modifier to check if domain is exist.
      */
     modifier isDomainExist(string memory domain) {
-        if (domains[domain] != address(0x0)) {
+        if (domains[domain] != address(0x0))
             revert DomainIsAlreadyRegistered();
-        }
         _;
     }
 
@@ -76,13 +74,11 @@ contract DomainController {
     payable
     isDomainExist(domain)
     {
-        if (!_isTopLevelDomain(domain)) {
+        if (!_isTopLevelDomain(domain))
             revert OnlyTopLevelDomainAllowed();
-        }
 
-        if (msg.value < domainRegistrationFee) {
+        if (msg.value < domainRegistrationFee)
             revert InsufficientPayment();
-        }
 
         domains[domain] = msg.sender;
         emit DomainRegistered(domain, msg.sender);
@@ -109,9 +105,8 @@ contract DomainController {
     {
         bytes memory domainBytes = bytes(domain);
 
-        if (domainBytes.length > TOP_LEVEL_DOMAIN_MAX_LENGTH) {
+        if (domainBytes.length > TOP_LEVEL_DOMAIN_MAX_LENGTH)
             revert TooLongLength();
-        }
 
         for (uint256 i = 0; i < domainBytes.length; i++) {
             if (domainBytes[i] == ".") {
@@ -125,13 +120,14 @@ contract DomainController {
      * @dev Allows the contract owner to withdraw accumulated funds.
      */
     function withdrawFunds(address payable target) external onlyOwner {
-        if (target == address(0x0)) {
+        if (target == address(0x0))
             revert InvalidTargetAddress();
-        }
+
         (bool success,) = target.call{value : address(this).balance}("");
-        if (!success) {
+
+        if (!success)
             revert FailedWithdrawal();
-        }
+
         emit MoneyWithdrawn(address(this).balance, msg.sender);
     }
 }
