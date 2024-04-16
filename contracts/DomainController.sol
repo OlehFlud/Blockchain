@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "hardhat/console.sol";
 
 /**
@@ -8,12 +10,22 @@ import "hardhat/console.sol";
  * @dev A simple domain registry contract that stores domain records associated with Ethereum addresses of the controllers.
  * Each controller can create multiple domains. Domains are reserved forever.
  */
-contract DomainController {
-    address public owner;
-    uint256 public domainRegistrationFee;
+contract DomainController is Initializable, OwnableUpgradeable {
 
+    struct Domain {
+        address owner;
+    }
+
+    /// @custom:storage-location erc7201:domainController.main
+    struct DomainStorage {
+        uint256 domainRegistrationFee;
+        mapping(string => Domain) domains;
+    }
     /** constants */
-    uint8 public constant TOP_LEVEL_DOMAIN_MAX_LENGTH = 63;
+    uint8 private constant TOP_LEVEL_DOMAIN_MAX_LENGTH = 63;
+
+    // keccak256(abi.encode(uint256(keccak256("domainController.main")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant DomainStorageLocation = 0x2850e3fc9c6856aeed0065311ef06e8ac9dfe4b55c18476acd9c4567ff43d000;
 
     /** errors */
     error OnlyOwnerAllowed();
@@ -24,35 +36,34 @@ contract DomainController {
     error DomainIsAlreadyRegistered();
     error TooLongLength();
 
-    mapping(string => address) public domains;
-
     /** events */
     event DomainRegistered(string domain, address indexed controller);
     event MoneyWithdrawn(uint256 amount, address indexed controller);
 
     /**
-     * @dev Constructor sets the contract owner and the initial domain registration fee.
-     */
-    constructor() {
-        owner = msg.sender;
-        domainRegistrationFee = 1 ether;
-        // Fixed domain registration fee
+    * @dev Retrieves the domain storage struct.
+    */
+    function _getDomainStorage() private pure returns (DomainStorage storage $) {
+        assembly {
+            $.slot := DomainStorageLocation
+        }
     }
 
     /**
-     * @dev Modifier to check if the caller is the contract owner.
+    * @dev Initialize the contract.
+     * @param _owner The initial owner of the contract.
+     * @param _domainRegistrationFee The fee required to register a domain.
      */
-    modifier onlyOwner() {
-        if (msg.sender != owner)
-            revert OnlyOwnerAllowed();
-        _;
+    function initialize(address _owner, uint256 _domainRegistrationFee) public initializer {
+        __Ownable_init(_owner);
+        _getDomainStorage().domainRegistrationFee = _domainRegistrationFee;
     }
 
     /**
      * @dev Modifier to check if domain is exist.
      */
     modifier isDomainExist(string memory domain) {
-        if (domains[domain] != address(0x0))
+        if (_getDomainStorage().domains[domain].owner != address(0x0))
             revert DomainIsAlreadyRegistered();
         _;
     }
@@ -62,7 +73,7 @@ contract DomainController {
      * @param newFee The new domain registration fee.
      */
     function setDomainRegistrationFee(uint256 newFee) external onlyOwner {
-        domainRegistrationFee = newFee;
+        _getDomainStorage().domainRegistrationFee = newFee;
     }
 
     /**
@@ -77,10 +88,10 @@ contract DomainController {
         if (!_isTopLevelDomain(domain))
             revert OnlyTopLevelDomainAllowed();
 
-        if (msg.value < domainRegistrationFee)
+        if (msg.value < _getDomainStorage().domainRegistrationFee)
             revert InsufficientPayment();
 
-        domains[domain] = msg.sender;
+        _getDomainStorage().domains[domain].owner = msg.sender;
         emit DomainRegistered(domain, msg.sender);
     }
 
@@ -90,7 +101,14 @@ contract DomainController {
      * @return The address of the controller of the domain.
      */
     function getDomainController(string memory domain) external view returns (address) {
-        return domains[domain];
+        return _getDomainStorage().domains[domain].owner;
+    }
+
+    /**
+     * @return The domainRegistrationFee of the domain.
+     */
+    function getRegistrationFee() external view returns (uint256) {
+        return _getDomainStorage().domainRegistrationFee;
     }
 
     /**
