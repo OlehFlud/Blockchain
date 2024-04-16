@@ -13,8 +13,14 @@ describe("DomainController", function () {
 
   beforeEach(async function () {
     [owner, addr1, addr2] = await ethers.getSigners();
-    DomainController = await ethers.getContractFactory("DomainController");
-    domainController = await upgrades.deployProxy(DomainController,[owner.address, 1]);
+    const domainRewardLibrary = await ethers.deployContract("library/DomainRewards.sol:DomainRewardLibrary");
+
+    DomainController = await ethers.getContractFactory("DomainController", {
+      libraries: {
+        DomainRewardLibrary: domainRewardLibrary
+      }
+    });
+    domainController = await upgrades.deployProxy(DomainController, [owner.address, 1], {unsafeAllowLinkedLibraries: true});
   });
 
   describe("DomainRegistration", function () {
@@ -32,9 +38,34 @@ describe("DomainController", function () {
     });
 
     it("should allow the owner to set the domain registration fee", async function () {
+      // console.log('owner.address',owner.address);
       await domainController.connect(owner).setDomainRegistrationFee(2);
+
+// Access the domainRegistrationFee from the DomainStorage struct
       const fee = await domainController.connect(owner).getRegistrationFee();
+
       expect(fee).to.equal(2);
+    });
+  })
+
+  describe("SubdomainRegistration", function () {
+    beforeEach(async function () {
+      await domainController.connect(owner).registerDomain("com", {value});
+      const domain = await domainController.getDomainController("com");
+      expect(domain).to.equal(owner.address);
+    });
+
+    it("should register a subdomain", async function () {
+      await domainController.connect(owner).registerSubdomain("flood", "com", {value});
+      const subdomain = await domainController.getSubdomainController("flood", "com");
+      expect(subdomain).to.equal(owner.address);
+    });
+
+    it("should not allow registering an already registered subdomain", async function () {
+      await domainController.connect(owner).registerSubdomain("flood", "com", {value});
+      await expect(domainController.connect(owner).registerSubdomain("flood", "com", {value})).to.be.rejectedWith(
+        "DomainIsAlreadyRegistered"
+      );
     });
   })
 

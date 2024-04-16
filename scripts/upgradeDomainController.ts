@@ -8,7 +8,7 @@ import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 
   const domainRewardLibrary = await ethers.deployContract("library/DomainRewards.sol:DomainRewardLibrary");
 
-  const domainControllerContract = await ethers.getContractFactory("DomainController2", {
+  const domainControllerContract = await ethers.getContractFactory("DomainController", {
     libraries: {
       DomainRewardLibrary: domainRewardLibrary
     }
