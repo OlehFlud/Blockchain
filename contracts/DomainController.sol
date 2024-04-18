@@ -34,6 +34,8 @@ contract DomainController is Initializable, OwnableUpgradeable {
     // keccak256(abi.encode(uint256(keccak256("domainController.main")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant DomainStorageLocation = 0x2850e3fc9c6856aeed0065311ef06e8ac9dfe4b55c18476acd9c4567ff43d000;
 
+    DomainRewardLibrary.RewardData private _rewardData;
+
     /** errors */
     error OnlyOwnerAllowed();
     error InsufficientPayment();
@@ -43,6 +45,7 @@ contract DomainController is Initializable, OwnableUpgradeable {
     error DomainIsAlreadyRegistered();
     error ParentDomainIsNotRegistered();
     error TooLongLength();
+    error NoRewardAvailable();
 
     /** events */
     event DomainRegistered(string domain, address indexed controller);
@@ -93,6 +96,8 @@ contract DomainController is Initializable, OwnableUpgradeable {
             revert InsufficientPayment();
 
         _getDomainStorage().domains[domain].owner = msg.sender;
+        _rewardData.addReward(owner(), _getDomainStorage().domainRegistrationFee);
+
         emit DomainRegistered(domain, msg.sender);
     }
 
@@ -100,7 +105,7 @@ contract DomainController is Initializable, OwnableUpgradeable {
      * @dev Registers a sub domain with the specified name.
      * @param subdomain The subdomain name to register.
      */
-    function registerSubdomain(string memory subdomain, string memory parentDomain) external payable onlyOwner {
+    function registerSubdomain(string memory subdomain, string memory parentDomain) external payable {
         if (_getDomainStorage().domains[parentDomain].owner == address(0x0))
             revert ParentDomainIsNotRegistered();
 
@@ -120,7 +125,7 @@ contract DomainController is Initializable, OwnableUpgradeable {
             revert DomainIsAlreadyRegistered();
 
         parent.subdomains[subdomain] = msg.sender;
-        _getDomainStorage().domainRewards[subdomain].addReward(msg.sender, msg.value);
+        _rewardData.addReward(parent.owner, _getDomainStorage().domainRegistrationFee);
 
         emit SubdomainRegistered(subdomain, parentDomain, msg.sender);
     }
@@ -178,15 +183,19 @@ contract DomainController is Initializable, OwnableUpgradeable {
     /**
      * @dev Allows the contract owner to withdraw accumulated funds.
      */
-    function withdrawFunds(address payable target) external onlyOwner {
+    function withdrawFunds(address payable target) external {
         if (target == address(0x0))
             revert InvalidTargetAddress();
 
-        (bool success,) = target.call{value : address(this).balance}("");
+        uint256 reward = _rewardData.claimReward(msg.sender);
 
+        if(reward <= 0)
+            revert NoRewardAvailable();
+
+        (bool success, ) = target.call{value: reward}("");
         if (!success)
             revert FailedWithdrawal();
 
-        emit MoneyWithdrawn(address(this).balance, msg.sender);
+        emit MoneyWithdrawn(reward, msg.sender);
     }
 }

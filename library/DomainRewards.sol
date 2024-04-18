@@ -9,4 +9,10 @@ library DomainRewardLibrary {
   function addReward(RewardData storage data, address owner, uint256 reward) external {
     data.rewards[owner] += reward;
   }
+
+  function claimReward(RewardData storage data, address owner) external returns (uint256) {
+    uint256 reward = data.rewards[owner];
+    data.rewards[owner] = 0;
+    return reward;
+  }
 }

@@ -72,8 +72,9 @@ describe("DomainController", function () {
   describe("WithdrawalFunds", function () {
     it("should allow the owner to withdraw funds", async function () {
       await domainController.connect(addr1).registerDomain("com", {value});
+      await domainController.connect(addr1).registerDomain("ua", {value});
       const initialBalance = await ethers.provider.getBalance(owner.address);
-      await domainController.withdrawFunds(addr1);
+      await domainController.connect(owner).withdrawFunds(addr2);
       const finalBalance = await ethers.provider.getBalance(owner.address);
 
       expect(finalBalance).lt(initialBalance)
