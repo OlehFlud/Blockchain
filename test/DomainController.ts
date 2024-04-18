@@ -38,10 +38,9 @@ describe("DomainController", function () {
     });
 
     it("should allow the owner to set the domain registration fee", async function () {
-      // console.log('owner.address',owner.address);
       await domainController.connect(owner).setDomainRegistrationFee(2);
 
-// Access the domainRegistrationFee from the DomainStorage struct
+      // Access the domainRegistrationFee from the DomainStorage struct
       const fee = await domainController.connect(owner).getRegistrationFee();
 
       expect(fee).to.equal(2);
