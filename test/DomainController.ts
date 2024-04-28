@@ -1,4 +1,4 @@
-import {ethers} from "hardhat";
+import {ethers, upgrades} from "hardhat";
 import {Contract, ContractFactory} from "ethers";
 import {expect} from "chai";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
@@ -13,30 +13,27 @@ describe("DomainController", function () {
 
   beforeEach(async function () {
     [owner, addr1, addr2] = await ethers.getSigners();
-
     DomainController = await ethers.getContractFactory("DomainController");
-    domainController = await DomainController.deploy();
-    await domainController.waitForDeployment();
+    domainController = await upgrades.deployProxy(DomainController,[owner.address, 1]);
   });
 
   describe("DomainRegistration", function () {
     it("should register a domain", async function () {
-      await domainController.connect(addr1).registerDomain("com", {value});
+      await domainController.connect(owner).registerDomain("com", {value});
       const domain = await domainController.getDomainController("com");
-      expect(domain).to.equal(addr1.address);
+      expect(domain).to.equal(owner.address);
     });
 
     it("should not allow registering an already registered domain", async function () {
-      await domainController.connect(addr1).registerDomain("com", {value});
-      await expect(domainController.connect(addr1).registerDomain("com", {value})).to.be.rejectedWith(
+      await domainController.connect(owner).registerDomain("com", {value});
+      await expect(domainController.connect(owner).registerDomain("com", {value})).to.be.rejectedWith(
         "DomainIsAlreadyRegistered"
       );
     });
 
     it("should allow the owner to set the domain registration fee", async function () {
-      await domainController.setDomainRegistrationFee(2);
-      const fee = await domainController.domainRegistrationFee();
-
+      await domainController.connect(owner).setDomainRegistrationFee(2);
+      const fee = await domainController.connect(owner).getRegistrationFee();
       expect(fee).to.equal(2);
     });
   })

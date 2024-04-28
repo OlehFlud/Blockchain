@@ -7,9 +7,11 @@
     "hardhat:node": "hardhat node",
     "hardhat:compile": "hardhat compile",
     "hardhat:compile:force": "hardhat compile --force",
-    "hardhat:test": "REPORT_GAS=true hardhat test",
+    "hardhat:test": "REPORT_GAS=true hardhat test ./test/DomainController.ts",
+    "hardhat:test2": "REPORT_GAS=true hardhat test ./test/DomainController2.ts",
     "hardhat:test:gas": "REPORT_GAS=true COINMARKETCAP_API_KEY=$(security find-generic-password -w -s 'Coinmarketcap API Key') hardhat test",
     "hardhat:deploy:DomainController": "hardhat run scripts/deployDomainController.ts --network localhost",
+    "hardhat:upgrade:DomainController": "hardhat run scripts/upgradeDomainController.ts --network localhost",
     "hardhat:deploy:sepolia": "MNEMONIC=$(security find-generic-password -w -s 'Seed Phrase (for Testnets)') INFURA_API_KEY=$(security find-generic-password -w -s 'Infura API key') hardhat run scripts/deployDomainController.ts.ts --network sepolia"
   },
   "keywords": [],
@@ -27,6 +29,9 @@
   },
   "dependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "@openzeppelin/contracts-upgradeable": "^5.0.2",
+    "@openzeppelin/hardhat-upgrades": "^3.0.5",
     "hardhat": "^2.22.2"
   }
 }
