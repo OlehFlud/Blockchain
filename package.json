@@ -9,6 +9,8 @@
     "hardhat:compile:force": "hardhat compile --force",
     "hardhat:test": "REPORT_GAS=true hardhat test ./test/DomainController.ts",
     "hardhat:test:gas": "REPORT_GAS=true COINMARKETCAP_API_KEY=$(security find-generic-password -w -s 'Coinmarketcap API Key') hardhat test",
+    "lint:contracts": "npx solhint contracts/**/*.sol",
+    "slither": "slither .",
     "hardhat:deploy:DomainController": "hardhat run scripts/deployDomainController.ts --network localhost",
     "hardhat:upgrade:DomainController": "hardhat run scripts/upgradeDomainController.ts --network localhost",
     "hardhat:deploy:sepolia": "MNEMONIC=$(security find-generic-password -w -s 'Seed Phrase (for Testnets)') INFURA_API_KEY=$(security find-generic-password -w -s 'Infura API key') hardhat run scripts/deployDomainController.ts.ts --network sepolia"
@@ -23,6 +25,9 @@
     "@types/node": "^20.12.2",
     "chai": "^4.4.1",
     "mocha": "^10.4.0",
+    "prettier": "^3.2.5",
+    "solhint": "^4.5.4",
+    "solhint-plugin-prettier": "^0.1.0",
     "ts-generator": "^0.1.1",
     "ts-node": "^10.9.2",
     "typechain": "^8.3.2",
