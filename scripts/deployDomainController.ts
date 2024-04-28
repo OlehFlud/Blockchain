@@ -1,12 +1,13 @@
 import { ethers, upgrades } from "hardhat";
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
+import {DomainController__factory, DomainController} from "../typechain-types";
+import {SignerWithAddress} from "@nomicfoundation/hardhat-ethers/signers";
 
 async function main() {
   let owner: SignerWithAddress;
   [owner] = await ethers.getSigners();
 
-  const domainControllerContract = await ethers.getContractFactory("DomainController");
-  const contract = await upgrades.deployProxy(domainControllerContract, [owner.address, 1],{unsafeAllowLinkedLibraries: true});
+  const domainControllerContract = await ethers.getContractFactory("DomainController") as DomainController__factory;
+  const contract = await upgrades.deployProxy(domainControllerContract, [owner.address, 1]) as DomainController;
 
   // add custom data
   await contract.registerDomain("com", {value: 1});
