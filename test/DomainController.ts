@@ -1,27 +1,26 @@
 import {ethers, upgrades} from "hardhat";
-import {Contract, ContractFactory} from "ethers";
 import {expect} from "chai";
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
+import {SignerWithAddress} from "@nomicfoundation/hardhat-ethers/signers";
+import {DomainController__factory, DomainController} from "../typechain-types";
 
 describe("DomainController", function () {
-  const value = ethers.parseEther("1");
-  let DomainController: ContractFactory;
-  let domainController: Contract;
+  const value = ethers.parseEther("1") as number;
+  let domainController;
   let owner: SignerWithAddress;
-  let addr1: string;
-  let addr2: string;
+  let addr1: SignerWithAddress;
+  let addr2: SignerWithAddress;
 
   beforeEach(async function () {
     [owner, addr1, addr2] = await ethers.getSigners();
-    DomainController = await ethers.getContractFactory("DomainController");
-    domainController = await upgrades.deployProxy(DomainController,[owner.address, 1]);
+    const DomainController = await ethers.getContractFactory("DomainController") as DomainController__factory;
+    domainController = await upgrades.deployProxy(DomainController, [await owner.getAddress(), 1]) as DomainController;
   });
 
   describe("DomainRegistration", function () {
     it("should register a domain", async function () {
       await domainController.connect(owner).registerDomain("com", {value});
       const domain = await domainController.getDomainController("com");
-      expect(domain).to.equal(owner.address);
+      expect(domain).to.equal(await owner.getAddress());
     });
 
     it("should not allow registering an already registered domain", async function () {
@@ -33,17 +32,42 @@ describe("DomainController", function () {
 
     it("should allow the owner to set the domain registration fee", async function () {
       await domainController.connect(owner).setDomainRegistrationFee(2);
+
+      // Access the domainRegistrationFee from the DomainStorage struct
       const fee = await domainController.connect(owner).getRegistrationFee();
+
       expect(fee).to.equal(2);
+    });
+  })
+
+  describe("SubdomainRegistration", function () {
+    beforeEach(async function () {
+      await domainController.connect(owner).registerDomain("com", {value});
+      const domain = await domainController.getDomainController("com");
+      expect(domain).to.equal(await owner.getAddress());
+    });
+
+    it("should register a subdomain", async function () {
+      await domainController.connect(owner).registerSubdomain("flood", "com", {value});
+      const subdomain = await domainController.getSubdomainController("flood", "com");
+      expect(subdomain).to.equal(await owner.getAddress());
+    });
+
+    it("should not allow registering an already registered subdomain", async function () {
+      await domainController.connect(owner).registerSubdomain("flood", "com", {value});
+      await expect(domainController.connect(owner).registerSubdomain("flood", "com", {value})).to.be.rejectedWith(
+        "DomainIsAlreadyRegistered"
+      );
     });
   })
 
   describe("WithdrawalFunds", function () {
     it("should allow the owner to withdraw funds", async function () {
       await domainController.connect(addr1).registerDomain("com", {value});
-      const initialBalance = await ethers.provider.getBalance(owner.address);
-      await domainController.withdrawFunds(addr1);
-      const finalBalance = await ethers.provider.getBalance(owner.address);
+      await domainController.connect(addr1).registerDomain("ua", {value});
+      const initialBalance = await ethers.provider.getBalance(await owner.getAddress());
+      await domainController.connect(owner).withdrawFunds(addr2);
+      const finalBalance = await ethers.provider.getBalance(await owner.getAddress());
 
       expect(finalBalance).lt(initialBalance)
     });
@@ -52,7 +76,7 @@ describe("DomainController", function () {
   describe("Event", function () {
     it("should emit DomainRegistered event when a domain is registered", async function () {
       const domain = "com";
-      const controller = owner.address;
+      const controller = owner.getAddress();
       await expect(domainController.connect(owner).registerDomain(domain, {value}))
         .to.emit(domainController, "DomainRegistered")
         .withArgs(domain, controller);
