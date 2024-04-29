@@ -13,7 +13,7 @@ describe("DomainController", function () {
   beforeEach(async function () {
     [owner, addr1, addr2] = await ethers.getSigners();
     const DomainController = await ethers.getContractFactory("DomainController") as DomainController__factory;
-    domainController = await upgrades.deployProxy(DomainController, [await owner.getAddress(), 1]) as DomainController;
+    domainController = await upgrades.deployProxy(DomainController, [await owner.getAddress(), value]) as DomainController;
   });
 
   describe("DomainRegistration", function () {
