@@ -13,7 +13,7 @@
     "slither": "slither .",
     "hardhat:deploy:DomainController": "hardhat run scripts/deployDomainController.ts --network localhost",
     "hardhat:upgrade:DomainController": "hardhat run scripts/upgradeDomainController.ts --network localhost",
-    "hardhat:deploy:sepolia": "MNEMONIC=$(security find-generic-password -w -s 'Seed Phrase (for Testnets)') INFURA_API_KEY=$(security find-generic-password -w -s 'Infura API key') hardhat run scripts/deployDomainController.ts.ts --network sepolia"
+    "hardhat:deploy:sepolia": "MNEMONIC=$(security find-generic-password -w -s 'Seed Phrase (for Testnets)') INFURA_API_KEY=$(security find-generic-password -w -s 'Infura API key') hardhat run scripts/deployDomainController.ts --network sepolia"
   },
   "keywords": [],
   "author": "Oleh Flud",
@@ -34,6 +34,7 @@
     "typescript": "^5.4.3"
   },
   "dependencies": {
+    "@chainlink/contracts": "^1.1.0",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openzeppelin/contracts": "^5.0.2",
     "@openzeppelin/contracts-upgradeable": "^5.0.2",

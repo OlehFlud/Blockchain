@@ -4,15 +4,17 @@ import {SignerWithAddress} from "@nomicfoundation/hardhat-ethers/signers";
 
 async function main() {
   let owner: SignerWithAddress;
+  const value = ethers.parseEther("0.0001") as any;
+
   [owner] = await ethers.getSigners();
 
   const domainControllerContract = await ethers.getContractFactory("DomainController") as DomainController__factory;
-  const contract = await upgrades.deployProxy(domainControllerContract, [owner.address, 1]) as DomainController;
+  const contract = await upgrades.deployProxy(domainControllerContract, [owner.address, value]) as DomainController;
 
   // add custom data
-  await contract.registerDomain("com", {value: 1});
-  await contract.registerDomain("ua", {value: 1});
-  await contract.registerDomain("net", {value: 1});
+  await contract.registerDomain("com", {value: value});
+  await contract.registerDomain("ua", {value: value});
+  await contract.registerDomain("net", {value: value});
 
   const filter = contract.filters.DomainRegistered(null, owner.address);
   const logs = await contract.queryFilter(filter);
