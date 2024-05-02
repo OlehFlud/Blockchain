@@ -119,28 +119,10 @@ contract DomainController is Initializable, OwnableUpgradeable {
     ) external payable isDomainExist(domain) {
         uint256 registrationFeeEth = _getDomainStorage().domainRegistrationFee;
 
-        //Calculate the equivalent fee in the stablecoin
-        int256 conversionRate = getPriceFee();
-        uint256 paymentUSD = msg.value / uint256(conversionRate);
-
-        // Ensure the payment amount is correct in either ETH or the stablecoin
-        if (
-            msg.value != registrationFeeEth && paymentUSD != registrationFeeEth
-        ) {
-            revert IncorrectAmountOfPayment();
-        }
-
-        // Transfer the payment to the contract owner
-        if (msg.value == registrationFeeEth) {
-            _rewardData.addReward(owner(), registrationFeeEth);
-        } else {
-            // Convert the stablecoin payment amount to USD for reward calculation
-            _rewardData.addReward(owner(), registrationFeeEth);
-        }
+        _rewardData.addReward(owner(), registrationFeeEth);
 
         _getDomainStorage().domains[domain].owner = msg.sender;
 
-        emit ConversionRateUpdated(conversionRate);
         emit DomainRegistered(domain, msg.sender, block.timestamp);
     }
 
@@ -156,19 +138,6 @@ contract DomainController is Initializable, OwnableUpgradeable {
 
         if (_getDomainStorage().domains[parentDomain].owner == address(0x0))
             revert ParentDomainIsNotRegistered();
-
-        int256 conversionRate = getPriceFee();
-
-        // Calculate the equivalent fee in the stablecoin
-        //uint256 registrationFeeStablecoin = registrationFeeUSD * conversionRate;
-        uint256 paymentUSD = msg.value / uint256(conversionRate);
-
-        // Ensure the payment amount is correct in either ETH or the stablecoin
-        if (
-            msg.value != registrationFeeEth && paymentUSD != registrationFeeEth
-        ) {
-            revert IncorrectAmountOfPayment();
-        }
 
         _rewardData.addReward(owner(), registrationFeeEth);
 
@@ -266,10 +235,8 @@ contract DomainController is Initializable, OwnableUpgradeable {
         if (target == address(0x0)) revert InvalidTargetAddress();
 
         uint256 reward = _rewardData.claimReward(msg.sender);
-        uint256 registrationFeeEth = _getDomainStorage().domainRegistrationFee;
 
-        (bool success, ) = target.call{value: reward - registrationFeeEth}("");
-        if (!success) revert FailedWithdrawal();
+        (bool success, ) = target.call{value: reward}("");
 
         emit MoneyWithdrawn(reward, msg.sender, block.timestamp);
     }
