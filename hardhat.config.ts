@@ -3,7 +3,6 @@ import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ethers/signers";
 import "@openzeppelin/hardhat-upgrades";
 import "@typechain/hardhat";
-
 const DEFAULT_MNEMONIC = "test test test test test test test test test test test junk";
 const MNEMONIC = process.env.MNEMONIC || DEFAULT_MNEMONIC;
 const INFURA_API_KEY = process.env.INFURA_API_KEY || "";

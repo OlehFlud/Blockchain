@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "../library/DomainRewards.sol";
 
 /**
@@ -36,7 +37,6 @@ contract DomainController is Initializable, OwnableUpgradeable {
 
     DomainRewardLibrary.RewardData private _rewardData;
 
-    /** errors */
     error OnlyOwnerAllowed();
     error IncorrectAmountOfPayment();
     error OnlyTopLevelDomainAllowed();
@@ -48,9 +48,23 @@ contract DomainController is Initializable, OwnableUpgradeable {
     error NoRewardAvailable();
 
     /** events */
-    event DomainRegistered(string domain, address indexed controller);
-    event SubdomainRegistered(string subdomain, string domain, address owner);
-    event MoneyWithdrawn(uint256 amount, address indexed controller);
+    event DomainRegistered(
+        string domain,
+        address indexed controller,
+        uint256 timestamp
+    );
+    event SubdomainRegistered(
+        string subdomain,
+        string domain,
+        uint256 timestamp,
+        address owner
+    );
+    event MoneyWithdrawn(
+        uint256 amount,
+        address indexed controller,
+        uint256 timestamp
+    );
+    event ConversionRateUpdated(int256 conversionRate);
 
     function _getDomainStorage()
         private
@@ -61,6 +75,7 @@ contract DomainController is Initializable, OwnableUpgradeable {
             $.slot := DOMAIN_STORAGE_LOCATION
         }
     }
+    AggregatorV3Interface internal priceFeed;
 
     function initialize(
         address owner,
@@ -68,6 +83,9 @@ contract DomainController is Initializable, OwnableUpgradeable {
     ) public initializer {
         __Ownable_init(owner);
         _getDomainStorage().domainRegistrationFee = domainRegistrationFee;
+        priceFeed = AggregatorV3Interface(
+            0x694AA1769357215DE4FAC081bf1f309aDC325306
+        );
     }
 
     /**
@@ -87,6 +105,11 @@ contract DomainController is Initializable, OwnableUpgradeable {
         _getDomainStorage().domainRegistrationFee = newFee;
     }
 
+    function getPriceFee() public view returns (int256) {
+        (, int256 answer, , , ) = priceFeed.latestRoundData();
+        // If the round is not complete yet, timestamp is 0
+        return answer;
+    }
     /**
      * @dev Registers a top-level domain with the specified name.
      * @param domain The domain name to register.
@@ -94,17 +117,13 @@ contract DomainController is Initializable, OwnableUpgradeable {
     function registerDomain(
         string memory domain
     ) external payable isDomainExist(domain) {
-        uint256 registrationFee = _getDomainStorage().domainRegistrationFee;
+        uint256 registrationFeeEth = _getDomainStorage().domainRegistrationFee;
 
-        if (!_isTopLevelDomain(domain)) revert OnlyTopLevelDomainAllowed();
-
-        if (msg.value != registrationFee) revert IncorrectAmountOfPayment();
+        _rewardData.addReward(owner(), registrationFeeEth);
 
         _getDomainStorage().domains[domain].owner = msg.sender;
 
-        _rewardData.addReward(owner(), registrationFee);
-
-        emit DomainRegistered(domain, msg.sender);
+        emit DomainRegistered(domain, msg.sender, block.timestamp);
     }
 
     /**
@@ -115,14 +134,12 @@ contract DomainController is Initializable, OwnableUpgradeable {
         string memory subdomain,
         string memory parentDomain
     ) external payable {
-        uint256 registrationFee = _getDomainStorage().domainRegistrationFee;
+        uint256 registrationFeeEth = _getDomainStorage().domainRegistrationFee;
 
         if (_getDomainStorage().domains[parentDomain].owner == address(0x0))
             revert ParentDomainIsNotRegistered();
 
-        if (msg.value != registrationFee) revert IncorrectAmountOfPayment();
-
-        _rewardData.addReward(owner(), registrationFee);
+        _rewardData.addReward(owner(), registrationFeeEth);
 
         _registerSubdomain(
             subdomain,
@@ -150,7 +167,12 @@ contract DomainController is Initializable, OwnableUpgradeable {
             _getDomainStorage().domainRegistrationFee
         );
 
-        emit SubdomainRegistered(subdomain, parentDomain, msg.sender);
+        emit SubdomainRegistered(
+            subdomain,
+            parentDomain,
+            block.timestamp,
+            msg.sender
+        );
     }
 
     /**
@@ -214,11 +236,12 @@ contract DomainController is Initializable, OwnableUpgradeable {
 
         uint256 reward = _rewardData.claimReward(msg.sender);
 
-        if (reward <= 0) revert NoRewardAvailable();
-
         (bool success, ) = target.call{value: reward}("");
-        if (!success) revert FailedWithdrawal();
 
-        emit MoneyWithdrawn(reward, msg.sender);
+        emit MoneyWithdrawn(reward, msg.sender, block.timestamp);
+    }
+
+    function walletBalance() public view returns (uint256) {
+        return _rewardData.getAmountOfReward(msg.sender);
     }
 }

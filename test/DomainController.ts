@@ -4,7 +4,7 @@ import {SignerWithAddress} from "@nomicfoundation/hardhat-ethers/signers";
 import {DomainController__factory, DomainController} from "../typechain-types";
 
 describe("DomainController", function () {
-  const value = ethers.parseEther("1") as number;
+  const value = ethers.parseEther("0.0001") as number;
   let domainController;
   let owner: SignerWithAddress;
   let addr1: SignerWithAddress;
@@ -21,6 +21,10 @@ describe("DomainController", function () {
       await domainController.connect(owner).registerDomain("com", {value});
       const domain = await domainController.getDomainController("com");
       expect(domain).to.equal(await owner.getAddress());
+    });
+    it("should get price usdt fee ", async function () {
+     const price =  await domainController.connect(owner).getPriceFee();
+      console.log('price',price);
     });
 
     it("should not allow registering an already registered domain", async function () {
